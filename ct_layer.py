@@ -91,7 +91,12 @@ class DeltaLayer(BaseTunerLayer):
 
         self.delta_dropout.update(nn.ModuleDict({adapter_name: delta_dropout_layer}))
         # Actual trainable parameters
-        self.delta_theta[adapter_name] = nn.Linear(self.in_features, self.out_features, bias=True)
+        # we should modify this
+        # self.bias should also be concerned
+        if init_lora_weights:
+            self.delta_theta[adapter_name] = nn.Linear(self.in_features, self.out_features, bias=True)
+
+
         if use_rslora:
             self.scaling[adapter_name] = delta_alpha / math.sqrt(r)
         else:
@@ -102,7 +107,17 @@ class DeltaLayer(BaseTunerLayer):
         # call this before dora_init
         self._move_adapter_to_device_of_base_layer(adapter_name)
 
+        # when do initialization, we have no need to set the adapters to be trainable or not
         self.set_adapter(self.active_adapters)
+
+    def spawn_delta_matrix(self, adapter_name):
+        if self.bias == "none":
+            self.delta_theta[adapter_name] = nn.Linear(self.in_features, self.out_features, bias=False)
+            nn.init.zeros_(self.delta_theta[adapter_name].weight)
+        else:
+            self.delta_theta[adapter_name] = nn.Linear(self.in_features, self.out_features, bias=True)
+            nn.init.zeros_(self.delta_theta[adapter_name].weight)
+            nn.init.zeros_(self.delta_theta[adapter_name].bias)
 
 
     def reset_lora_parameters(self, adapter_name, init_lora_weights):

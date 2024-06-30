@@ -69,7 +69,7 @@ def dispatch_default(
     return new_module
 
 
-class LoraModel(BaseTuner):
+class DeltaModel(BaseTuner):
     """
     Creates Low Rank Adapter (LoRA) model from a pretrained transformers model.
     Args:
@@ -228,13 +228,8 @@ class LoraModel(BaseTuner):
         dispatchers = []
 
         # avoid eager bnb import
-        if is_bnb_available():
-            from .bnb import dispatch_bnb_8bit
-
-            dispatchers.append(dispatch_bnb_8bit)
-
         if is_bnb_4bit_available():
-            from .bnb import dispatch_bnb_4bit
+            from ct_bnb import dispatch_bnb_4bit
 
             dispatchers.append(dispatch_bnb_4bit)
 
