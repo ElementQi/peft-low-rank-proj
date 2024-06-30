@@ -76,8 +76,6 @@ def init_layers_with_active_block(module, active_block, prefix='', root_module=N
 
 
 
-
-
 # def init_layers_with_active_block(module, active_block, prefix=''):
 #     """
 #     Recursively traverse all submodules of a model and apply a specific operation

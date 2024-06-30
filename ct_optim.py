@@ -250,6 +250,8 @@ class BlockOptimizer(Optimizer):
             print(f"Now init the block adapter {self.block_prefix_list[self.current_block_idx]}")
 
         init_layers_with_active_block(self.model, self.active_param_prefixs)
+        # don't forget to update `self.named_parameters_list`
+        self.named_parameters_list = list(self.model.named_parameters())
         
         # Make sure there are trainable parameters in the current block when using lora
         # while self.lora_mode:
@@ -286,7 +288,7 @@ class BlockOptimizer(Optimizer):
                 param.requires_grad_(False)
                 param.grad = None
             else:
-                if self.lora_mode and "lora" not in name:
+                if self.lora_mode and "delta" not in name:
                     continue
                 param.requires_grad_(True)
                 param_hp = param.clone().float().detach().to(param.device)
@@ -309,6 +311,10 @@ class BlockOptimizer(Optimizer):
         gc.collect()
         # Clean the optimizer state
         self.base_optimizer.state = defaultdict(lambda: {})
+
+
+
+
         self._update_active_block()
 
     def _update_active_block(self):

@@ -118,6 +118,7 @@ class DeltaLayer(BaseTunerLayer):
             self.delta_theta[adapter_name] = nn.Linear(self.in_features, self.out_features, bias=True)
             nn.init.zeros_(self.delta_theta[adapter_name].weight)
             nn.init.zeros_(self.delta_theta[adapter_name].bias)
+        self._move_adapter_to_device_of_base_layer(adapter_name)
 
 
     def reset_lora_parameters(self, adapter_name, init_lora_weights):
