@@ -66,22 +66,62 @@ class Linear4bit(torch.nn.Module, LoraLayer):
                 # if active_adapter not in self.lora_A.keys():
                 #     continue
 
+                # this means delta_theta is empty
+                
                 if active_adapter not in self.delta_theta.keys():
-                    continue
-                delta_theta = self.delta_theta[active_adapter]
-                # lora_A = self.lora_A[active_adapter]
-                # lora_B = self.lora_B[active_adapter]
-                dropout = self.delta_dropout[active_adapter]
-                scaling = self.scaling[active_adapter]
+                    if active_adapter not in self.delta_A.keys():
+                        continue
+                    else:
+                        delta_A = self.delta_A[active_adapter]
+                        delta_B = self.delta_B[active_adapter]
+                        dropout = self.delta_dropout[active_adapter]
+                        scaling = self.scaling[active_adapter]
 
-                requires_conversion = not torch.is_autocast_enabled()
-                if requires_conversion:
-                    expected_dtype = result.dtype
-                    x = x.to(delta_theta.weight.dtype)
+                        requires_conversion = not torch.is_autocast_enabled()
+                        if requires_conversion:
+                            expected_dtype = result.dtype
+                            x = x.to(delta_A.weight.dtype)
+                            # x = x.to(self.base_layer[active_adapter].weight.dtype)
+                        
+                        # print(f" x[0] shape: {x[0].shape}")
+                        # print(f" A shape: {delta_A.weight.shape}")
+                        # print(f"delta_A.in_features: {delta_A.in_features}")
+                        # print(f"delta_A.out_features: {delta_A.out_features}")
+                        # print(f"delta_A.weight: {delta_A.weight}")
+                        # print(f"delta_A.bias: {delta_A.bias}")
 
-                output = delta_theta(dropout(x)) * scaling
-                # output = lora_B(lora_A(dropout(x))) * scaling
 
+                        # batch_size, seq_len, in_features = x.shape
+                        # x = x.view(batch_size * seq_len, in_features)  # [batch_size * seq_len, in_features]
+
+                        # output_1 = delta_A(dropout(x))  # [batch_size * seq_len, out_features]
+                        # output_1 = output_1.view(batch_size, seq_len, -1)  # [batch_size, seq_len, out_features]
+
+                        # # Apply delta_B
+                        # output = delta_B(output_1) * scaling
+
+                        # output_1 = delta_A(dropout(x))
+                        # output = delta_B(output_1) * scaling
+
+                        output = dropout(x) @ delta_A.weight @ delta_B.weight * scaling
+                        # output = delta_B(delta_A(dropout(x))) * scaling
+                        # output = dropout(x) @ 
+
+
+                        
+                else:
+                
+                    delta_theta = self.delta_theta[active_adapter]
+                    dropout = self.delta_dropout[active_adapter]
+                    scaling = self.scaling[active_adapter]
+
+                    requires_conversion = not torch.is_autocast_enabled()
+                    if requires_conversion:
+                        expected_dtype = result.dtype
+                        x = x.to(delta_theta.weight.dtype)
+
+                    output = delta_theta(dropout(x)) * scaling
+                        
                 if requires_conversion:
                     output = output.to(expected_dtype)
 

@@ -9,7 +9,7 @@ import math
 import warnings
 from transformers.pytorch_utils import ALL_LAYERNORM_LAYERS
 from ct_layer import DeltaLayer
-from ct_utils import init_layers_with_active_block
+from ct_utils import init_layers_with_active_block, del_and_create_with_active_block
 
 
 
@@ -288,7 +288,7 @@ class BlockOptimizer(Optimizer):
                 param.requires_grad_(False)
                 param.grad = None
             else:
-                if self.lora_mode and "delta" not in name:
+                if self.lora_mode and "delta_theta" not in name:
                     continue
                 param.requires_grad_(True)
                 param_hp = param.clone().float().detach().to(param.device)
@@ -312,8 +312,18 @@ class BlockOptimizer(Optimizer):
         # Clean the optimizer state
         self.base_optimizer.state = defaultdict(lambda: {})
 
+        if self.global_step>=1:
+            # del and create A, B
+            # avg_low_rank_projection_loss = del_and_create_with_active_block(self.model, self.active_param_prefixs)
+            temp_current_block_idx = (self.current_block_idx - 1) % self.block_num
+            back_prefix = self.block_prefix_list[temp_current_block_idx] + self.active_modules
+            del_and_create_with_active_block(self.model, back_prefix)
 
-
+            # if self.verbose >= 1:
+            #     print(f"After low rank projection, the projection loss is {avg_low_rank_projection_loss}")
+                
+            # don't forget to update `self.named_parameters_list`
+            self.named_parameters_list = list(self.model.named_parameters())
 
         self._update_active_block()
 

@@ -12,6 +12,7 @@ from peft.tuners.tuners_utils import BaseTunerLayer, check_adapters_to_merge
 from peft.utils.integrations import dequantize_module_weight
 from peft.utils.other import transpose
 
+from ct_utils import low_rank_proj
 
 class DeltaLayer(BaseTunerLayer):
     # All names of layers that may contain (trainable) adapter weights
@@ -119,6 +120,50 @@ class DeltaLayer(BaseTunerLayer):
             nn.init.zeros_(self.delta_theta[adapter_name].weight)
             nn.init.zeros_(self.delta_theta[adapter_name].bias)
         self._move_adapter_to_device_of_base_layer(adapter_name)
+
+
+    def del_delta_create_AB(self, adapter_name):
+        # print("self.delta_theta[adapter_name].weight.data")
+        # print(self.delta_theta[adapter_name].weight.data)
+
+        r = self.r[adapter_name]
+        # start low rank proj
+        # A, B, difference = low_rank_proj(self.delta_theta[adapter_name].weight.data, self.r)
+        # there is a transpose
+        A, B, loss = low_rank_proj(self.delta_theta[adapter_name].weight.data.T, r)
+
+        # use_bias = False if self.bias == "none" else True
+        use_bias = True if self.base_layer.bias is not None else False
+
+        bias_data = self.delta_theta[adapter_name].bias.data
+
+        # delete delta_theta
+        self.delta_theta = nn.ModuleDict({})
+
+        # create A, B matrix on model
+        # self.delta_A[adapter_name] = nn.Linear(self.in_features, r, bias=use_bias)
+        # self.delta_B[adapter_name] = nn.Linear(r, self.out_features, bias=False)
+
+        self.delta_A[adapter_name] = nn.Linear(self.in_features, r, bias=use_bias)
+        self.delta_B[adapter_name] = nn.Linear(r, self.out_features, bias=False)
+
+        # self.delta_A[adapter_name] = nn.Linear(r, self.in_features, bias=use_bias)
+        # self.delta_B[adapter_name] = nn.Linear(self.out_features, r, bias=False)
+
+        self.delta_A[adapter_name].weight.data = A
+        # self.delta_B[adapter_name].weight.data = B.t()
+        self.delta_B[adapter_name].weight.data = B
+
+        if self.delta_A[adapter_name].bias is not None and bias_data is not None:
+            self.delta_A[adapter_name].bias.data = bias_data
+
+        self._move_adapter_to_device_of_base_layer(adapter_name)
+
+        # difference = "placeholder"
+        # return difference
+        
+        return loss
+
 
 
     def reset_lora_parameters(self, adapter_name, init_lora_weights):
