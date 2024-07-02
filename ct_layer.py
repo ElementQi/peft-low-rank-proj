@@ -138,20 +138,14 @@ class DeltaLayer(BaseTunerLayer):
         bias_data = self.delta_theta[adapter_name].bias.data
 
         # delete delta_theta
+        del self.delta_theta[adapter_name]
         self.delta_theta = nn.ModuleDict({})
 
         # create A, B matrix on model
-        # self.delta_A[adapter_name] = nn.Linear(self.in_features, r, bias=use_bias)
-        # self.delta_B[adapter_name] = nn.Linear(r, self.out_features, bias=False)
-
         self.delta_A[adapter_name] = nn.Linear(self.in_features, r, bias=use_bias)
         self.delta_B[adapter_name] = nn.Linear(r, self.out_features, bias=False)
 
-        # self.delta_A[adapter_name] = nn.Linear(r, self.in_features, bias=use_bias)
-        # self.delta_B[adapter_name] = nn.Linear(self.out_features, r, bias=False)
-
         self.delta_A[adapter_name].weight.data = A
-        # self.delta_B[adapter_name].weight.data = B.t()
         self.delta_B[adapter_name].weight.data = B
 
         if self.delta_A[adapter_name].bias is not None and bias_data is not None:
